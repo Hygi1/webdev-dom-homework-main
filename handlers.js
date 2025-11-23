@@ -1,27 +1,53 @@
-import { escapeHtml } from './escapeHtml.js';
 import { postComment } from './api.js';
 
-export function handleLikeButtonClick(e, comments, renderCallback) {
-  if (e.target.classList.contains('like-button')) {
-    const index = parseInt(e.target.dataset.index);
+function delay(interval = 300) {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve();
+    }, interval);
+  });
+}
 
-    if (comments[index].isLiked) {
-      comments[index].likes--;
-      comments[index].isLiked = false;
-    } else {
-      comments[index].likes++;
-      comments[index].isLiked = true;
-    }
+export function handleLikeButtonClick(e, comments, renderCallback) {
+  if (e.target.classList.contains('like-button') && !e.target.disabled) {
+    const index = parseInt(e.target.dataset.index);
+    const comment = comments[index];
+
+    if (comment.isLikeLoading) return;
+
+    comment.isLikeLoading = true;
     renderCallback();
+
+    delay(2000)
+      .then(() => {
+        if (comment.isLiked) {
+          comment.likes = Math.max(0, comment.likes - 1);
+          comment.isLiked = false;
+        } else {
+          comment.likes += 1;
+          comment.isLiked = true;
+        }
+        comment.isLikeLoading = false;
+      })
+      .then(() => {
+        renderCallback();
+      })
+      .catch((error) => {
+        console.error('Ошибка при лайке:', error);
+        comment.isLikeLoading = false;
+        renderCallback();
+      });
   }
 }
 
 export function handleCommentTextClick(e, nameInput, textInput) {
   if (e.target.classList.contains('comment-text')) {
     const commentText = e.target.textContent;
-    const commentAuthor = e.target
+    const commentHeader = e.target
       .closest('.comment')
-      .querySelector('.comment-header div:first-child').textContent;
+      .querySelector('.comment-header');
+    const commentAuthor =
+      commentHeader.querySelector('div:first-child').textContent;
 
     nameInput.value = `Ответ ${commentAuthor}`;
     textInput.value = `> ${commentText}\n\n`;
@@ -29,7 +55,7 @@ export function handleCommentTextClick(e, nameInput, textInput) {
   }
 }
 
-export async function handleAddComment(
+export function handleAddComment(
   nameInput,
   textInput,
   comments,
@@ -40,35 +66,24 @@ export async function handleAddComment(
 
   if (!text) {
     alert('Пожалуйста, введите текст комментария');
-    return;
+    return Promise.reject('Пустой текст');
   }
 
   if (!name) {
     alert('Пожалуйста, введите имя');
-    return;
+    return Promise.reject('Пустое имя');
   }
 
-  try {
-    const addButton = document.querySelector('.add-form-button');
-    const originalText = addButton.textContent;
-    addButton.textContent = 'Добавляем...';
-    addButton.disabled = true;
-
-    await postComment({
-      text: text,
-      name: name,
+  return postComment({
+    text: text,
+    name: name,
+  })
+    .then(() => {
+      return loadCommentsCallback();
+    })
+    .catch((error) => {
+      console.error('Ошибка при добавлении:', error);
+      alert('Не удалось добавить комментарий. Попробуйте позже.');
+      throw error;
     });
-
-    nameInput.value = '';
-    textInput.value = '';
-
-    await loadCommentsCallback();
-  } catch (error) {
-    alert('Не удалось добавить комментарий. Попробуйте позже.');
-    console.error('Ошибка при добавлении:', error);
-  } finally {
-    const addButton = document.querySelector('.add-form-button');
-    addButton.textContent = 'Написать';
-    addButton.disabled = false;
-  }
 }

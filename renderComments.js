@@ -1,33 +1,34 @@
 import { formatDate } from './formatDate.js';
 
-function getTextFromField(field) {
-  if (typeof field === 'string') {
-    return field;
-  } else if (field && typeof field === 'object') {
+function getSafeText(text) {
+  if (typeof text === 'string') return text;
+  if (text && typeof text === 'object') {
     return (
-      field.text ||
-      field.value ||
-      field.content ||
-      field.name ||
-      JSON.stringify(field)
+      text.text ||
+      text.content ||
+      text.value ||
+      text.message ||
+      text.name ||
+      text.title ||
+      JSON.stringify(text)
     );
   }
-  return String(field);
+  return String(text);
 }
 
-function getAuthorFromField(field) {
-  if (typeof field === 'string') {
-    return field;
-  } else if (field && typeof field === 'object') {
+function getSafeAuthor(author) {
+  if (typeof author === 'string') return author;
+  if (author && typeof author === 'object') {
     return (
-      field.name ||
-      field.author ||
-      field.username ||
-      field.login ||
-      JSON.stringify(field)
+      author.name ||
+      author.author ||
+      author.username ||
+      author.login ||
+      author.email ||
+      JSON.stringify(author)
     );
   }
-  return String(field);
+  return String(author);
 }
 
 export function renderComments(commentsList, comments) {
@@ -35,13 +36,13 @@ export function renderComments(commentsList, comments) {
 
   comments.forEach((comment, index) => {
     const formattedDate = formatDate(new Date(comment.date));
+    const author = getSafeAuthor(comment.author || comment.name);
+    const text = getSafeText(comment.text);
 
-    const author = getAuthorFromField(comment.author || comment.name);
-    const text = getTextFromField(comment.text);
+    let likeClass = 'like-button';
+    if (comment.isLiked) likeClass += ' -active-like';
+    if (comment.isLikeLoading) likeClass += ' -loading-like';
 
-    const likeClass = comment.isLiked
-      ? 'like-button -active-like'
-      : 'like-button';
     const commentHTML = `
       <li class="comment">
         <div class="comment-header">
@@ -54,7 +55,8 @@ export function renderComments(commentsList, comments) {
         <div class="comment-footer">
           <div class="likes">
             <span class="likes-counter">${comment.likes || 0}</span>
-            <button class="${likeClass}" data-index="${index}"></button>
+            <button class="${likeClass}" data-index="${index}" 
+                    ${comment.isLikeLoading ? 'disabled' : ''}></button>
           </div>
         </div>
       </li>

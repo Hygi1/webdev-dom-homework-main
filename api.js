@@ -1,43 +1,32 @@
-// api.js
 const API_BASE_URL = 'https://wedev-api.sky.pro/api/v1/danil-mekhanoshin';
 const COMMENTS_URL = `${API_BASE_URL}/comments`;
 
-export async function getComments() {
-  try {
-    const response = await fetch(COMMENTS_URL, {
-      method: 'GET',
+export function getComments() {
+  return fetch(COMMENTS_URL, {
+    method: 'GET',
+  })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error('Ошибка при загрузке комментариев');
+      }
+      return response.json();
+    })
+    .then((data) => {
+      return data.comments;
     });
-
-    if (!response.ok) {
-      throw new Error('Ошибка при загрузке комментариев');
-    }
-
-    const data = await response.json();
-    return data.comments;
-  } catch (error) {
-    console.error('Ошибка:', error);
-    throw error;
-  }
 }
 
-export async function postComment({ text, name }) {
-  try {
-    const response = await fetch(COMMENTS_URL, {
-      method: 'POST',
-      body: JSON.stringify({
-        text: text,
-        name: name,
-      }),
-    });
-
+export function postComment({ text, name }) {
+  return fetch(COMMENTS_URL, {
+    method: 'POST',
+    body: JSON.stringify({
+      text: text,
+      name: name,
+    }),
+  }).then((response) => {
     if (!response.ok) {
       throw new Error('Ошибка при добавлении комментария');
     }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Ошибка:', error);
-    throw error;
-  }
+    return response.json();
+  });
 }

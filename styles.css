@@ -177,6 +177,19 @@ body {
   padding: 20px;
 }
 
+.loading-comments,
+.adding-comment {
+  color: #bcec30;
+  font-size: 20px;
+  text-align: center;
+  padding: 40px;
+  background: rgba(115, 52, 234, 0.1);
+  border-radius: 20px;
+  margin: 20px 0;
+  width: 596px;
+  box-sizing: border-box;
+}
+
 @keyframes rotating {
   from {
     transform: rotate(0deg);
@@ -192,11 +205,11 @@ body {
   }
 }
 
-.loading-like {
-  animation: rotating 0.8s linear infinite;
+.-loading-like {
+  animation: rotating 2s linear infinite;
 }
 
 .add-form-button:disabled {
-  background-color: #cccccc;
+  opacity: 0.6;
   cursor: not-allowed;
 }
