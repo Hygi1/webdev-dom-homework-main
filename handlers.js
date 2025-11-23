@@ -33,7 +33,6 @@ export function handleLikeButtonClick(e, comments, renderCallback) {
         renderCallback();
       })
       .catch((error) => {
-        console.error('Ошибка при лайке:', error);
         comment.isLikeLoading = false;
         renderCallback();
       });
@@ -56,22 +55,16 @@ export function handleCommentTextClick(e, nameInput, textInput) {
 }
 
 export function handleAddComment(
-  nameInput,
-  textInput,
+  { nameInput, textInput },
   comments,
   loadCommentsCallback
 ) {
   const text = textInput.value.trim();
   const name = nameInput.value.trim();
 
-  if (!text) {
-    alert('Пожалуйста, введите текст комментария');
-    return Promise.reject('Пустой текст');
-  }
-
-  if (!name) {
-    alert('Пожалуйста, введите имя');
-    return Promise.reject('Пустое имя');
+  if (name.length < 3 || text.length < 3) {
+    alert('Имя и комментарий должны быть не короче 3 символов');
+    return Promise.reject('Слишком короткие данные');
   }
 
   return postComment({
@@ -79,11 +72,20 @@ export function handleAddComment(
     name: name,
   })
     .then(() => {
+      nameInput.value = '';
+      textInput.value = '';
       return loadCommentsCallback();
     })
     .catch((error) => {
-      console.error('Ошибка при добавлении:', error);
-      alert('Не удалось добавить комментарий. Попробуйте позже.');
+      if (
+        error.message.includes('Сервер сломался') ||
+        error.message.includes('интернет') ||
+        error.message.includes('короче 3 символов')
+      ) {
+        alert(error.message);
+      } else {
+        alert('Неизвестная ошибка. Попробуйте позже.');
+      }
       throw error;
     });
 }
