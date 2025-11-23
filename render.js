@@ -3,6 +3,11 @@ import { escapeHtml } from './escapeHtml.js';
 export function renderComments(commentsList, comments) {
   commentsList.innerHTML = '';
 
+  if (comments.length === 0) {
+    commentsList.innerHTML = '<li class="no-comments">Комментариев нет</li>';
+    return;
+  }
+
   comments.forEach((comment, index) => {
     const escapedAuthor = escapeHtml(comment.author);
     const escapedText = escapeHtml(comment.text);

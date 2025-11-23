@@ -1,57 +1,62 @@
-import { escapeHtml } from "./escapeHtml.js";
-import { formatDate } from "./formatDate.js";
+import { addComment } from './api.js';
 
-export function handleLikeButtonClick(e, comments, renderComments) {
-  if (e.target.classList.contains("like-button")) {
+export function handleLikeButtonClick(
+  e,
+  comments,
+  renderComments,
+  commentsList
+) {
+  if (e.target.classList.contains('like-button')) {
     const index = parseInt(e.target.dataset.index);
-    if (comments[index].isLiked) {
-      comments[index].likes--;
-      comments[index].isLiked = false;
-    } else {
-      comments[index].likes++;
-      comments[index].isLiked = true;
-    }
-    renderComments();
+    comments[index].isLiked = !comments[index].isLiked;
+    comments[index].likes += comments[index].isLiked ? 1 : -1;
+    renderComments(commentsList, comments);
   }
 }
 
 export function handleCommentTextClick(e, nameInput, textInput) {
-  if (e.target.closest(".comment-text")) {
+  if (e.target.closest('.comment-text')) {
     const commentText = e.target.textContent;
     const commentAuthor = e.target
-      .closest(".comment")
-      .querySelector(".comment-header div:first-child").textContent;
-    const replyText = `> ${commentText}`;
-    const replyAuthor = `Ответ на комментарий ${commentAuthor}:`;
-    nameInput.value = replyAuthor;
-    textInput.value = replyText;
+      .closest('.comment')
+      .querySelector('.comment-header div:first-child').textContent;
+    textInput.value = `> ${commentText}`;
+    nameInput.value = `Ответ на комментарий ${commentAuthor}:`;
   }
 }
 
-export function handleAddComment(
+export async function handleAddComment(
   nameInput,
   textInput,
   comments,
-  renderComments
+  renderComments,
+  commentsList
 ) {
   const text = textInput.value.trim();
-  const author = nameInput.value.trim() || "Аноним";
+  const name = nameInput.value.trim() || 'Аноним';
 
   if (!text) return;
 
-  const safeText = escapeHtml(text);
-  const safeAuthor = escapeHtml(author);
-
   const newComment = {
-    text: safeText,
-    author: safeAuthor,
-    date: formatDate(new Date()),
+    text,
+    name,
+    date: new Date().toISOString().slice(0, 19).replace('T', ' '),
     likes: 0,
     isLiked: false,
   };
 
-  comments.push(newComment);
-  nameInput.value = "";
-  textInput.value = "";
-  renderComments();
+  try {
+    const response = await addComment(newComment);
+    if (response.success) {
+      comments.push(newComment);
+      nameInput.value = '';
+      textInput.value = '';
+      renderComments(commentsList, comments);
+    } else {
+      throw new Error('Сервер вернул ошибку');
+    }
+  } catch (error) {
+    console.error('Ошибка отправки комментария:', error);
+    alert('Не удалось отправить комментарий. Попробуйте позже.');
+  }
 }
