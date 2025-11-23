@@ -1,9 +1,10 @@
-import { escapeHtml } from "./escapeHtml.js";
-import { formatDate } from "./formatDate.js";
+import { escapeHtml } from './escapeHtml.js';
+import { postComment } from './api.js';
 
-export function handleLikeButtonClick(e, comments, renderComments) {
-  if (e.target.classList.contains("like-button")) {
+export function handleLikeButtonClick(e, comments, renderCallback) {
+  if (e.target.classList.contains('like-button')) {
     const index = parseInt(e.target.dataset.index);
+
     if (comments[index].isLiked) {
       comments[index].likes--;
       comments[index].isLiked = false;
@@ -11,47 +12,63 @@ export function handleLikeButtonClick(e, comments, renderComments) {
       comments[index].likes++;
       comments[index].isLiked = true;
     }
-    renderComments();
+    renderCallback();
   }
 }
 
 export function handleCommentTextClick(e, nameInput, textInput) {
-  if (e.target.closest(".comment-text")) {
+  if (e.target.classList.contains('comment-text')) {
     const commentText = e.target.textContent;
     const commentAuthor = e.target
-      .closest(".comment")
-      .querySelector(".comment-header div:first-child").textContent;
-    const replyText = `> ${commentText}`;
-    const replyAuthor = `Ответ на комментарий ${commentAuthor}:`;
-    nameInput.value = replyAuthor;
-    textInput.value = replyText;
+      .closest('.comment')
+      .querySelector('.comment-header div:first-child').textContent;
+
+    nameInput.value = `Ответ ${commentAuthor}`;
+    textInput.value = `> ${commentText}\n\n`;
+    textInput.focus();
   }
 }
 
-export function handleAddComment(
+export async function handleAddComment(
   nameInput,
   textInput,
   comments,
-  renderComments
+  loadCommentsCallback
 ) {
   const text = textInput.value.trim();
-  const author = nameInput.value.trim() || "Аноним";
+  const name = nameInput.value.trim();
 
-  if (!text) return;
+  if (!text) {
+    alert('Пожалуйста, введите текст комментария');
+    return;
+  }
 
-  const safeText = escapeHtml(text);
-  const safeAuthor = escapeHtml(author);
+  if (!name) {
+    alert('Пожалуйста, введите имя');
+    return;
+  }
 
-  const newComment = {
-    text: safeText,
-    author: safeAuthor,
-    date: formatDate(new Date()),
-    likes: 0,
-    isLiked: false,
-  };
+  try {
+    const addButton = document.querySelector('.add-form-button');
+    const originalText = addButton.textContent;
+    addButton.textContent = 'Добавляем...';
+    addButton.disabled = true;
 
-  comments.push(newComment);
-  nameInput.value = "";
-  textInput.value = "";
-  renderComments();
+    await postComment({
+      text: text,
+      name: name,
+    });
+
+    nameInput.value = '';
+    textInput.value = '';
+
+    await loadCommentsCallback();
+  } catch (error) {
+    alert('Не удалось добавить комментарий. Попробуйте позже.');
+    console.error('Ошибка при добавлении:', error);
+  } finally {
+    const addButton = document.querySelector('.add-form-button');
+    addButton.textContent = 'Написать';
+    addButton.disabled = false;
+  }
 }
