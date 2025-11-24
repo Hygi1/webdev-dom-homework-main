@@ -4,13 +4,95 @@ import {
   handleCommentTextClick,
   handleAddComment,
 } from './handlers.js';
-import { getComments } from './api.js';
+import { getComments, setToken } from './api.js';
+import { renderAuthForm } from './auth.js';
+import { getUser, removeUser } from './storage.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+let currentUser = null;
+
+function renderCommentApp() {
+  const app = document.querySelector('.container');
+
+  app.innerHTML = `
+    <div class="comments-container">
+      <div class="user-header">
+        <span>Вы вошли как: ${currentUser.name}</span>
+        <button class="logout-button">Выйти</button>
+      </div>
+      
+      <div class="loading-comments" style="display: none;">
+        Комментарии загружаются...
+      </div>
+      
+      <ul class="comments"></ul>
+      
+      <div class="add-form">
+        <input
+          type="text"
+          class="add-form-name"
+          placeholder="Ваше имя"
+          readonly
+          value="${currentUser.name}"
+        />
+        <textarea
+          type="textarea"
+          class="add-form-text"
+          placeholder="Введите ваш комментарий"
+          rows="4"
+        ></textarea>
+        <div class="add-form-row">
+          <button class="add-form-button">Написать</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  initializeCommentApp();
+}
+
+function renderUnauthorizedApp() {
+  const app = document.querySelector('.container');
+
+  app.innerHTML = `
+    <div class="comments-container">
+      <div class="loading-comments" style="display: none;">
+        Комментарии загружаются...
+      </div>
+      
+      <ul class="comments"></ul>
+      
+      <div class="auth-prompt">
+        <p>Чтобы добавить комментарий, <a href="#" class="auth-link">авторизуйтесь</a></p>
+      </div>
+    </div>
+  `;
+
+  setTimeout(() => {
+    const authLink = document.querySelector('.auth-link');
+    if (authLink) {
+      authLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        renderAuthForm({
+          onSuccess: (user) => {
+            currentUser = user;
+            renderCommentApp();
+          },
+        });
+      });
+    }
+  }, 0);
+
+  initializeCommentApp(false);
+}
+
+function initializeCommentApp(withForm = true) {
   const commentsList = document.querySelector('.comments');
-  let nameInput = document.querySelector('.add-form-name');
-  let textInput = document.querySelector('.add-form-text');
-  let addButton = document.querySelector('.add-form-button');
+
+  if (!commentsList) return;
+
+  let nameInput = withForm ? document.querySelector('.add-form-name') : null;
+  let textInput = withForm ? document.querySelector('.add-form-text') : null;
+  let addButton = withForm ? document.querySelector('.add-form-button') : null;
 
   let comments = [];
   let savedFormData = { name: '', text: '' };
@@ -18,7 +100,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const render = () => renderComments(commentsList, comments);
 
   const loadComments = () => {
-    commentsList.innerHTML = `<div style="color: #bcec30; text-align: center; padding: 40px; background: rgba(115, 52, 234, 0.1); border-radius: 20px;">Комментарии загружаются...</div>`;
+    const loadingDiv = document.querySelector('.loading-comments');
+    if (loadingDiv) loadingDiv.style.display = 'block';
+    if (commentsList) commentsList.style.display = 'none';
 
     return getComments()
       .then((loadedComments) => {
@@ -32,64 +116,97 @@ document.addEventListener('DOMContentLoaded', () => {
         ) {
           alert(error.message);
         }
-        commentsList.innerHTML = `<div style="color: #ff6b6b; text-align: center; padding: 20px; background: rgba(255,107,107,0.1); border-radius: 10px;">${
-          error.message || 'Не удалось загрузить комментарии'
-        }</div>`;
+        if (commentsList) {
+          commentsList.innerHTML = `<div style="color: #ff6b6b; text-align: center; padding: 20px; background: rgba(255,107,107,0.1); border-radius: 10px;">${
+            error.message || 'Не удалось загрузить комментарии'
+          }</div>`;
+        }
+      })
+      .finally(() => {
+        const loadingDiv = document.querySelector('.loading-comments');
+        if (loadingDiv) loadingDiv.style.display = 'none';
+        if (commentsList) commentsList.style.display = 'block';
       });
   };
 
-  const bindFormHandlers = () => {
-    nameInput = document.querySelector('.add-form-name');
-    textInput = document.querySelector('.add-form-text');
-    addButton = document.querySelector('.add-form-button');
+  if (withForm) {
+    const bindFormHandlers = () => {
+      nameInput = document.querySelector('.add-form-name');
+      textInput = document.querySelector('.add-form-text');
+      addButton = document.querySelector('.add-form-button');
 
-    nameInput.addEventListener('input', (e) => {
-      savedFormData.name = e.target.value;
-    });
+      if (textInput) {
+        textInput.addEventListener('input', (e) => {
+          savedFormData.text = e.target.value;
+        });
+      }
 
-    textInput.addEventListener('input', (e) => {
-      savedFormData.text = e.target.value;
-    });
+      if (addButton) {
+        addButton.addEventListener('click', handleFormSubmit);
+      }
 
-    addButton.addEventListener('click', handleFormSubmit);
-    textInput.addEventListener('keypress', handleKeyPress);
-  };
+      if (textInput) {
+        textInput.addEventListener('keypress', handleKeyPress);
+      }
+    };
 
-  const handleFormSubmit = () => {
-    const addForm = document.querySelector('.add-form');
-    const originalFormHTML = addForm.innerHTML;
+    const handleFormSubmit = () => {
+      const addForm = document.querySelector('.add-form');
+      if (!addForm) return;
 
-    savedFormData.name = nameInput.value;
-    savedFormData.text = textInput.value;
+      const originalFormHTML = addForm.innerHTML;
+      savedFormData.text = textInput ? textInput.value : '';
 
-    addForm.innerHTML = `<div style="color: #bcec30; text-align: center; padding: 40px; background: rgba(115, 52, 234, 0.1); border-radius: 20px;">Комментарий добавляется...</div>`;
+      addForm.innerHTML = `<div style="color: #bcec30; text-align: center; padding: 40px; background: rgba(115, 52, 234, 0.1); border-radius: 20px;">Комментарий добавляется...</div>`;
 
-    handleAddComment({ nameInput, textInput }, comments, loadComments).finally(
-      () => {
+      handleAddComment(
+        { nameInput, textInput, currentUser },
+        comments,
+        loadComments
+      ).finally(() => {
         addForm.innerHTML = originalFormHTML;
         bindFormHandlers();
-        nameInput.value = savedFormData.name;
-        textInput.value = savedFormData.text;
-      }
-    );
-  };
+        if (textInput) textInput.value = savedFormData.text;
+      });
+    };
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && e.ctrlKey) {
-      handleFormSubmit();
+    const handleKeyPress = (e) => {
+      if (e.key === 'Enter' && e.ctrlKey) {
+        handleFormSubmit();
+      }
+    };
+
+    bindFormHandlers();
+
+    const logoutButton = document.querySelector('.logout-button');
+    if (logoutButton) {
+      logoutButton.addEventListener('click', () => {
+        removeUser();
+        currentUser = null;
+        setToken(null);
+        renderUnauthorizedApp();
+      });
     }
-  };
+  }
 
   const handleDocumentClick = (e) => {
     handleLikeButtonClick(e, comments, render);
-    handleCommentTextClick(e, nameInput, textInput);
+    if (withForm) {
+      handleCommentTextClick(e, nameInput, textInput);
+    }
   };
 
-  const init = () => {
-    loadComments();
-    document.addEventListener('click', handleDocumentClick);
-    bindFormHandlers();
-  };
+  loadComments();
+  document.addEventListener('click', handleDocumentClick);
+}
 
-  init();
+document.addEventListener('DOMContentLoaded', () => {
+  const savedUser = getUser();
+  if (savedUser && savedUser.token) {
+    currentUser = savedUser;
+    setToken(savedUser.token);
+    renderCommentApp();
+  } else {
+    renderUnauthorizedApp();
+  }
 });
