@@ -8,8 +8,18 @@ function delay(interval = 300) {
   });
 }
 
-export function handleLikeButtonClick(e, comments, renderCallback) {
+export function handleLikeButtonClick(
+  e,
+  comments,
+  renderCallback,
+  currentUser
+) {
   if (e.target.classList.contains('like-button') && !e.target.disabled) {
+    if (!currentUser) {
+      alert('Чтобы поставить лайк, авторизуйтесь');
+      return;
+    }
+
     const index = parseInt(e.target.dataset.index);
     const comment = comments[index];
 
@@ -70,7 +80,6 @@ export function handleAddComment(
     text: text,
   })
     .then(() => {
-      textInput.value = '';
       return loadCommentsCallback();
     })
     .catch((error) => {

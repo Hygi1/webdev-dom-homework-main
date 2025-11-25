@@ -58,7 +58,6 @@ export function renderAuthForm({ onSuccess }) {
     const passwordValue = passwordInput.value.trim();
     const nameValue = nameInput ? nameInput.value.trim() : '';
 
-    // Валидация
     if (!loginValue) {
       showError('Введите логин');
       return;
@@ -99,7 +98,6 @@ export function renderAuthForm({ onSuccess }) {
       saveUser(result.user);
       onSuccess(result.user);
     } catch (error) {
-      console.error('Auth error:', error);
       showError(error.message);
     } finally {
       authButton.disabled = false;
