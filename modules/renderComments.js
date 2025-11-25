@@ -1,4 +1,5 @@
 import { formatDate } from './formatDate.js';
+import { escapeHtml } from './escapeHtml.js';
 
 function getSafeText(text) {
   if (typeof text === 'string') return text;
@@ -36,8 +37,8 @@ export function renderComments(commentsList, comments) {
 
   comments.forEach((comment, index) => {
     const formattedDate = formatDate(new Date(comment.date));
-    const author = getSafeAuthor(comment.author || comment.name);
-    const text = getSafeText(comment.text);
+    const author = escapeHtml(getSafeAuthor(comment.author || comment.name));
+    const text = escapeHtml(getSafeText(comment.text));
 
     let likeClass = 'like-button';
     if (comment.isLiked) likeClass += ' -active-like';

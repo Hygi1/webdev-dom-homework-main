@@ -8,8 +8,18 @@ function delay(interval = 300) {
   });
 }
 
-export function handleLikeButtonClick(e, comments, renderCallback) {
+export function handleLikeButtonClick(
+  e,
+  comments,
+  renderCallback,
+  currentUser
+) {
   if (e.target.classList.contains('like-button') && !e.target.disabled) {
+    if (!currentUser) {
+      alert('Чтобы поставить лайк, авторизуйтесь');
+      return;
+    }
+
     const index = parseInt(e.target.dataset.index);
     const comment = comments[index];
 
@@ -55,32 +65,29 @@ export function handleCommentTextClick(e, nameInput, textInput) {
 }
 
 export function handleAddComment(
-  { nameInput, textInput },
+  { nameInput, textInput, currentUser },
   comments,
   loadCommentsCallback
 ) {
   const text = textInput.value.trim();
-  const name = nameInput.value.trim();
 
-  if (name.length < 3 || text.length < 3) {
-    alert('Имя и комментарий должны быть не короче 3 символов');
-    return Promise.reject('Слишком короткие данные');
+  if (text.length < 3) {
+    alert('Комментарий должен быть не короче 3 символов');
+    return Promise.reject('Слишком короткий комментарий');
   }
 
   return postComment({
     text: text,
-    name: name,
   })
     .then(() => {
-      nameInput.value = '';
-      textInput.value = '';
       return loadCommentsCallback();
     })
     .catch((error) => {
       if (
         error.message.includes('Сервер сломался') ||
         error.message.includes('интернет') ||
-        error.message.includes('короче 3 символов')
+        error.message.includes('короче 3 символов') ||
+        error.message.includes('авторизации')
       ) {
         alert(error.message);
       } else {
